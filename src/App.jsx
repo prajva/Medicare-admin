@@ -31,16 +31,21 @@ import {
   X,
   DollarSign,
   ChevronRight,
-  Pill
+  Pill,
+  Send,
+  Building2,
+  MessageSquare,
+  Share2
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
 const STAGES = [
   { id: 'placed', label: 'Order Confirmed', color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', step: 1 },
-  { id: 'verified', label: 'Pharmacist Verified', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30', step: 2 },
-  { id: 'dispatched', label: 'Packed & Dispatched', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', step: 3 },
-  { id: 'out_for_delivery', label: 'Out for Delivery', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', step: 4 },
-  { id: 'delivered', label: 'Delivered', color: 'bg-green-500/20 text-green-400 border-green-500/30', step: 5 },
+  { id: 'sent_to_store', label: 'Sent to Medical Store', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30', step: 2 },
+  { id: 'verified', label: 'Pharmacist Verified', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30', step: 3 },
+  { id: 'dispatched', label: 'Packed & Dispatched', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', step: 4 },
+  { id: 'out_for_delivery', label: 'Out for Delivery', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', step: 5 },
+  { id: 'delivered', label: 'Delivered', color: 'bg-green-500/20 text-green-400 border-green-500/30', step: 6 },
   { id: 'cancelled', label: 'Cancelled', color: 'bg-rose-500/20 text-rose-400 border-rose-500/30', step: 0 },
 ]
 
@@ -121,6 +126,27 @@ export default function App() {
       console.error('Update status error:', err)
       toast.error('Failed to update status in cloud: ' + (err?.message || 'Check connection'))
     }
+  }
+
+  // Send Order List directly to Medical Store via WhatsApp
+  function handleSendOrderListWhatsApp(order) {
+    const itemsText = (order.items || []).map((it, idx) => `${idx + 1}. ${it.name} (Qty: ${it.quantity || 1})`).join('\n')
+    const message = `🏥 *MEDICARE ORDER LIST FOR MEDICAL STORE*
+*Order ID:* #${order.id}
+*Customer:* ${order.deliveryName || 'Customer'}
+*Phone:* ${order.deliveryPhone || 'N/A'}
+*Delivery Address:* ${order.deliveryAddress || 'N/A'}
+${order.prescription ? `*Prescription Attached:* Yes (${order.prescription})\n` : ''}${order.notes ? `*Customer Notes:* ${order.notes}\n` : ''}
+📋 *MEDICINES TO PREPARE:*
+${itemsText || '1. Prescription verified medicine item'}
+
+*Total Billing:* ₹${Number(order.totalAmount || order.total || 0).toFixed(2)} (Cash on Delivery)
+*Status:* Sent to Medical Store for Dispensing 💊`
+
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`
+    window.open(url, '_blank')
+    handleUpdateStatus(order.id, 'sent_to_store', 2)
+    toast.success('Order List prepared & marked as Sent to Medical Store! 🏪')
   }
 
   // Quick Demo Generator for testing & evaluation
@@ -285,6 +311,7 @@ export default function App() {
               { id: 'all', label: 'All Orders' },
               { id: 'active', label: 'In-Transit' },
               { id: 'placed', label: 'New / Placed' },
+              { id: 'sent_to_store', label: 'Sent to Medical Store' },
               { id: 'verified', label: 'Pharmacist Checked' },
               { id: 'dispatched', label: 'Dispatched' },
               { id: 'delivered', label: 'Delivered' },
@@ -427,17 +454,44 @@ export default function App() {
                         </button>
 
                         {order.status === 'placed' && (
-                          <button
-                            onClick={() => handleUpdateStatus(order.id, 'verified', 2)}
-                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5" /> Verify Rx
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'sent_to_store', 2)}
+                              className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-cyan-600/20 flex items-center gap-1.5"
+                            >
+                              <Send className="w-3.5 h-3.5" /> Send to Store
+                            </button>
+                            <button
+                              onClick={() => handleSendOrderListWhatsApp(order)}
+                              title="Send Order List to Medical Store via WhatsApp"
+                              className="p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl transition-all"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+
+                        {order.status === 'sent_to_store' && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'verified', 3)}
+                              className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20 flex items-center gap-1.5"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" /> Verify Rx
+                            </button>
+                            <button
+                              onClick={() => handleSendOrderListWhatsApp(order)}
+                              title="Resend Order List to Medical Store"
+                              className="p-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-xl transition-all"
+                            >
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         )}
 
                         {order.status === 'verified' && (
                           <button
-                            onClick={() => handleUpdateStatus(order.id, 'dispatched', 3)}
+                            onClick={() => handleUpdateStatus(order.id, 'dispatched', 4)}
                             className="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-amber-600/20 flex items-center gap-1.5"
                           >
                             <Package className="w-3.5 h-3.5" /> Pack & Dispatch
@@ -446,7 +500,7 @@ export default function App() {
 
                         {order.status === 'dispatched' && (
                           <button
-                            onClick={() => handleUpdateStatus(order.id, 'out_for_delivery', 4)}
+                            onClick={() => handleUpdateStatus(order.id, 'out_for_delivery', 5)}
                             className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5"
                           >
                             <Truck className="w-3.5 h-3.5" /> Out for Delivery
@@ -455,7 +509,7 @@ export default function App() {
 
                         {order.status === 'out_for_delivery' && (
                           <button
-                            onClick={() => handleUpdateStatus(order.id, 'delivered', 5)}
+                            onClick={() => handleUpdateStatus(order.id, 'delivered', 6)}
                             className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-green-600/20 flex items-center gap-1.5"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" /> Mark Delivered
@@ -543,6 +597,39 @@ export default function App() {
                       <span className="font-bold text-emerald-400">₹{item.subtotal}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Medical Store Dispatch Action */}
+              <div className="bg-gradient-to-r from-cyan-950/40 to-blue-950/40 p-4 rounded-2xl border border-cyan-800/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-white flex items-center gap-1.5 text-xs text-cyan-400">
+                    <Building2 className="w-4 h-4" /> Medical Store Transmission:
+                  </span>
+                  {selectedOrder.status === 'sent_to_store' && (
+                    <span className="bg-cyan-500/20 text-cyan-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-cyan-500/30">
+                      ✓ Order List Sent
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Transmit full medicine item list, quantities, and patient address directly to the counter pharmacist or store partner via WhatsApp.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSendOrderListWhatsApp(selectedOrder)}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-md shadow-emerald-600/20"
+                  >
+                    <MessageSquare className="w-4 h-4" /> Send List via WhatsApp
+                  </button>
+                  {selectedOrder.status !== 'sent_to_store' && (
+                    <button
+                      onClick={() => handleUpdateStatus(selectedOrder.id, 'sent_to_store', 2)}
+                      className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center gap-1.5 transition-colors"
+                    >
+                      <Send className="w-3.5 h-3.5" /> Mark Sent
+                    </button>
+                  )}
                 </div>
               </div>
 
