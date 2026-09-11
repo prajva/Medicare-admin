@@ -52,6 +52,7 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [lastCount, setLastCount] = useState(0)
+  const [expandedImage, setExpandedImage] = useState(null)
 
   // Real-time Live Listener on Firebase Firestore "orders" collection
   useEffect(() => {
@@ -386,8 +387,19 @@ export default function App() {
                         </div>
 
                         {order.prescription && (
-                          <div className="inline-flex items-center gap-1.5 text-xs text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20">
-                            <FileCheck className="w-3.5 h-3.5" /> Doctor's Rx Attached: <strong>{order.prescription}</strong>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="inline-flex items-center gap-1.5 text-xs text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20">
+                              <FileCheck className="w-3.5 h-3.5" /> Doctor's Rx: <strong>{order.prescription}</strong>
+                            </div>
+                            {order.prescriptionImage && (
+                              <button
+                                onClick={() => setExpandedImage(order.prescriptionImage)}
+                                className="inline-flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-colors"
+                              >
+                                <img src={order.prescriptionImage} alt="Rx" className="w-4 h-4 rounded object-cover" />
+                                <span>View Photo 🔍</span>
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -496,6 +508,26 @@ export default function App() {
                 {selectedOrder.prescription && (
                   <p className="text-indigo-400"><strong>Doctor's Prescription:</strong> {selectedOrder.prescription}</p>
                 )}
+                {selectedOrder.prescriptionImage && (
+                  <div className="pt-2 border-t border-slate-800">
+                    <p className="font-bold text-white mb-2 flex items-center gap-1.5 text-xs text-indigo-400">
+                      <FileCheck className="w-4 h-4" /> Uploaded Prescription / Medicine List Photo:
+                    </p>
+                    <div 
+                      onClick={() => setExpandedImage(selectedOrder.prescriptionImage)}
+                      className="cursor-pointer group relative rounded-2xl overflow-hidden border border-slate-700 bg-black max-h-52 flex items-center justify-center hover:border-indigo-500 transition-colors"
+                    >
+                      <img 
+                        src={selectedOrder.prescriptionImage} 
+                        alt="Prescription document" 
+                        className="max-h-52 w-full object-contain group-hover:scale-105 transition-transform" 
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white font-bold text-xs transition-opacity">
+                        🔍 Click to Zoom In Full Screen
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Items List */}
@@ -544,6 +576,35 @@ export default function App() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Prescription Viewer Modal */}
+      {expandedImage && (
+        <div 
+          onClick={() => setExpandedImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <div className="w-full flex justify-between items-center mb-3">
+              <span className="text-white font-bold text-sm flex items-center gap-2">
+                <FileCheck className="w-4 h-4 text-emerald-400" /> High-Resolution Prescription / Medicine List
+              </span>
+              <button 
+                onClick={() => setExpandedImage(null)}
+                className="text-white hover:text-red-400 font-bold text-xs flex items-center gap-1 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-xl border border-slate-700 transition-colors"
+              >
+                <X className="w-4 h-4" /> Close Preview
+              </button>
+            </div>
+            <div className="overflow-auto max-h-[80vh] w-full rounded-2xl border border-slate-800 bg-slate-950 flex items-center justify-center p-2">
+              <img 
+                src={expandedImage} 
+                alt="Expanded Prescription" 
+                className="max-h-[75vh] max-w-full object-contain rounded-xl shadow-2xl" 
+              />
+            </div>
           </div>
         </div>
       )}
